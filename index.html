@@ -171,13 +171,24 @@
       }
     }
     
-    /* Estilo para el iframe de SoundCloud */
-    .soundcloud-player {
-      display: none;
+    .soundcloud-widget {
       width: 100%;
+      height: 80px;
       margin-top: 15px;
-      border-radius: 8px;
-      overflow: hidden;
+      display: none;
+    }
+    
+    .music-status {
+      font-size: 12px;
+      color: #c2185b;
+      margin-top: 10px;
+    }
+    
+    .error-message {
+      color: #d32f2f;
+      font-size: 12px;
+      margin-top: 10px;
+      display: none;
     }
   </style>
 </head>
@@ -189,7 +200,9 @@
         <div class="card" id="card">
           <p class="message">¡Para ti mamá!<br>Con todo mi amor 💖</p>
           <button class="music-btn" id="musicBtn">▶ Reproducir Música</button>
-          <iframe id="soundcloudIframe" class="soundcloud-player" height="166" scrolling="no" frameborder="no" allow="autoplay" src=""></iframe>
+          <div id="soundcloud-widget" class="soundcloud-widget"></div>
+          <p id="musicStatus" class="music-status"></p>
+          <p id="errorMessage" class="error-message"></p>
         </div>
       </div>
     </div>
@@ -197,81 +210,132 @@
   </div>
 
   <script>
-    // Elementos del DOM
+    // Configuración inicial
     const envelope = document.getElementById('envelope');
     const heartsContainer = document.getElementById('heartsContainer');
     const musicBtn = document.getElementById('musicBtn');
-    const soundcloudIframe = document.getElementById('soundcloudIframe');
+    const soundcloudWidget = document.getElementById('soundcloud-widget');
+    const musicStatus = document.getElementById('musicStatus');
+    const errorMessage = document.getElementById('errorMessage');
     
     let cartaAbierta = false;
     let musicaReproduciendo = false;
+    let player = null;
     
-    // URL de SoundCloud
-    const soundcloudUrl = "https://soundcloud.com/huck-bless/mi-mejor-inspiraci-n-norick?si=499feb652fe543b4ad62a815ae63c8a4&utm_source=clipboard&utm_medium=text&utm_campaign=social_sharing";
+    const soundcloudUrl = "https://soundcloud.com/huck-bless/mi-mejor-inspiraci-n-norick";
     
-    // Configurar el iframe de SoundCloud
-    soundcloudIframe.src = `https://w.soundcloud.com/player/?url=${encodeURIComponent(soundcloudUrl)}&color=%23ff4081&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true`;
+    // Función para mostrar errores
+    function showError(message) {
+      errorMessage.textContent = message;
+      errorMessage.style.display = 'block';
+      musicStatus.style.display = 'none';
+      console.error(message);
+    }
     
-    // Función para abrir la carta
+    // Cargar SDK de SoundCloud
+    function loadSDK() {
+      return new Promise((resolve) => {
+        if (window.SC) return resolve();
+        
+        const script = document.createElement('script');
+        script.src = 'https://w.soundcloud.com/player/api.js';
+        script.onload = () => resolve();
+        script.onerror = () => showError('Error al cargar el reproductor');
+        document.head.appendChild(script);
+      });
+    }
+    
+    // Inicializar reproductor
+    function initPlayer() {
+      soundcloudWidget.innerHTML = '';
+      
+      const iframe = document.createElement('iframe');
+      iframe.id = 'sc-widget';
+      iframe.width = '100%';
+      iframe.height = '166';
+      iframe.scrolling = 'no';
+      iframe.frameBorder = 'no';
+      iframe.allow = 'autoplay';
+      iframe.src = `https://w.soundcloud.com/player/?url=${encodeURIComponent(soundcloudUrl)}&color=%23ff4081&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false`;
+      
+      soundcloudWidget.appendChild(iframe);
+      soundcloudWidget.style.display = 'block';
+      
+      player = SC.Widget('sc-widget');
+      
+      player.bind(SC.Widget.Events.READY, () => {
+        musicStatus.textContent = "Reproductor listo";
+      });
+      
+      player.bind(SC.Widget.Events.PLAY, () => {
+        musicBtn.textContent = "❚❚ Pausar";
+        musicStatus.textContent = "Reproduciendo...";
+        musicaReproduciendo = true;
+      });
+      
+      player.bind(SC.Widget.Events.PAUSE, () => {
+        musicBtn.textContent = "▶ Reproducir";
+        musicStatus.textContent = "Pausado";
+        musicaReproduciendo = false;
+      });
+      
+      player.bind(SC.Widget.Events.ERROR, (e) => {
+        showError('Error en el reproductor: ' + e);
+      });
+    }
+    
+    // Control de música
+    async function toggleMusic() {
+      if (!cartaAbierta) {
+        alert("Abre primero la carta");
+        return;
+      }
+      
+      try {
+        if (!player) {
+          musicBtn.disabled = true;
+          musicStatus.textContent = "Cargando...";
+          await loadSDK();
+          initPlayer();
+          musicBtn.disabled = false;
+        }
+        
+        if (musicaReproduciendo) {
+          player.pause();
+        } else {
+          player.play();
+        }
+      } catch (error) {
+        showError('Error: ' + error.message);
+        musicBtn.disabled = false;
+      }
+    }
+    
+    // Animación de la carta
     function abrirCarta() {
-      if(cartaAbierta) return;
+      if (cartaAbierta) return;
       
       cartaAbierta = true;
       envelope.classList.add('open');
       
-      crearCorazones();
-      envelope.style.pointerEvents = 'none';
-    }
-    
-    // Función para crear corazones
-    function crearCorazones() {
+      // Crear corazones
       heartsContainer.innerHTML = '';
-      
       for (let i = 0; i < 30; i++) {
         const heart = document.createElement('div');
-        heart.classList.add('heart');
-        
+        heart.className = 'heart';
         heart.style.left = `${Math.random() * 100}%`;
         heart.style.top = `${Math.random() * 100}%`;
         heart.style.width = `${10 + Math.random() * 20}px`;
         heart.style.height = heart.style.width;
         heart.style.animationDelay = `${Math.random() * 2}s`;
-        
         heartsContainer.appendChild(heart);
       }
-      
       heartsContainer.style.opacity = '1';
     }
     
-    // Función para controlar la música
-    function controlarMusica() {
-      if(!cartaAbierta) {
-        alert("Por favor, abre primero la carta haciendo clic en el sobre.");
-        return;
-      }
-      
-      if(musicaReproduciendo) {
-        // Pausar la música (no se puede pausar directamente el iframe de SoundCloud)
-        soundcloudIframe.style.display = 'none';
-        musicBtn.textContent = "▶ Reproducir Música";
-        musicaReproduciendo = false;
-      } else {
-        // Mostrar y reproducir
-        soundcloudIframe.style.display = 'block';
-        musicBtn.textContent = "♪ Reproduciendo...";
-        musicaReproduciendo = true;
-        
-        // Recargar el iframe para iniciar la reproducción
-        soundcloudIframe.src = soundcloudIframe.src;
-      }
-    }
-    
-    // Event listeners
+    // Eventos
     envelope.addEventListener('click', abrirCarta);
-    musicBtn.addEventListener('click', function(e) {
-      e.stopPropagation();
-      controlarMusica();
-    });
+    musicBtn.addEventListener('click', toggleMusic);
   </script>
 </body>
 </html>
