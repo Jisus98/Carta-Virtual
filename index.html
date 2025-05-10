@@ -170,6 +170,15 @@
         opacity: 0;
       }
     }
+    
+    /* Estilo para el iframe de SoundCloud */
+    .soundcloud-player {
+      display: none;
+      width: 100%;
+      margin-top: 15px;
+      border-radius: 8px;
+      overflow: hidden;
+    }
   </style>
 </head>
 <body>
@@ -180,16 +189,11 @@
         <div class="card" id="card">
           <p class="message">¡Para ti mamá!<br>Con todo mi amor 💖</p>
           <button class="music-btn" id="musicBtn">▶ Reproducir Música</button>
+          <iframe id="soundcloudIframe" class="soundcloud-player" height="166" scrolling="no" frameborder="no" allow="autoplay" src=""></iframe>
         </div>
       </div>
     </div>
     <div class="hearts-container" id="heartsContainer"></div>
-    
-    <!-- Reproductor de audio -->
-    <audio id="audioPlayer" preload="auto">
-      <source src="musica.mp3" type="audio/mpeg">
-      Tu navegador no soporta el elemento de audio.
-    </audio>
   </div>
 
   <script>
@@ -197,22 +201,16 @@
     const envelope = document.getElementById('envelope');
     const heartsContainer = document.getElementById('heartsContainer');
     const musicBtn = document.getElementById('musicBtn');
-    const audioPlayer = document.getElementById('audioPlayer');
+    const soundcloudIframe = document.getElementById('soundcloudIframe');
     
     let cartaAbierta = false;
-    let audioPermitido = false;
+    let musicaReproduciendo = false;
     
-    // Verificar estado del audio
-    audioPlayer.addEventListener('canplaythrough', () => {
-      console.log("Audio listo para reproducir");
-      audioPermitido = true;
-    });
+    // URL de SoundCloud
+    const soundcloudUrl = "https://soundcloud.com/huck-bless/mi-mejor-inspiraci-n-norick?si=499feb652fe543b4ad62a815ae63c8a4&utm_source=clipboard&utm_medium=text&utm_campaign=social_sharing";
     
-    audioPlayer.addEventListener('error', () => {
-      console.error("Error de audio:", audioPlayer.error);
-      musicBtn.textContent = "Error de audio";
-      alert("ERROR: No se pudo cargar 'musica.mp3'. Verifica que:\n1. El archivo existe en esta carpeta\n2. Se llama exactamente 'musica.mp3'\n3. Es un archivo MP3 válido");
-    });
+    // Configurar el iframe de SoundCloud
+    soundcloudIframe.src = `https://w.soundcloud.com/player/?url=${encodeURIComponent(soundcloudUrl)}&color=%23ff4081&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true`;
     
     // Función para abrir la carta
     function abrirCarta() {
@@ -220,9 +218,6 @@
       
       cartaAbierta = true;
       envelope.classList.add('open');
-      
-      // Precargar el audio después de la interacción del usuario
-      audioPlayer.load();
       
       crearCorazones();
       envelope.style.pointerEvents = 'none';
@@ -249,25 +244,25 @@
     }
     
     // Función para controlar la música
-    async function controlarMusica() {
+    function controlarMusica() {
       if(!cartaAbierta) {
         alert("Por favor, abre primero la carta haciendo clic en el sobre.");
         return;
       }
       
-      try {
-        if(audioPlayer.paused) {
-          await audioPlayer.play();
-          musicBtn.textContent = "♪ Reproduciendo...";
-          audioPlayer.volume = 0.7;
-        } else {
-          audioPlayer.pause();
-          musicBtn.textContent = "▶ Reproducir Música";
-        }
-      } catch (error) {
-        console.error("Error de reproducción:", error);
-        musicBtn.textContent = "Permiso denegado";
-        alert("El navegador bloqueó el audio. Por favor:\n1. Asegúrate de que el navegador tenga permiso para reproducir audio\n2. Haz clic en 'Allow' si aparece un mensaje de permiso");
+      if(musicaReproduciendo) {
+        // Pausar la música (no se puede pausar directamente el iframe de SoundCloud)
+        soundcloudIframe.style.display = 'none';
+        musicBtn.textContent = "▶ Reproducir Música";
+        musicaReproduciendo = false;
+      } else {
+        // Mostrar y reproducir
+        soundcloudIframe.style.display = 'block';
+        musicBtn.textContent = "♪ Reproduciendo...";
+        musicaReproduciendo = true;
+        
+        // Recargar el iframe para iniciar la reproducción
+        soundcloudIframe.src = soundcloudIframe.src;
       }
     }
     
@@ -276,11 +271,6 @@
     musicBtn.addEventListener('click', function(e) {
       e.stopPropagation();
       controlarMusica();
-    });
-    
-    // Cuando termina la música
-    audioPlayer.addEventListener('ended', function() {
-      musicBtn.textContent = "▶ Reproducir de nuevo";
     });
   </script>
 </body>
